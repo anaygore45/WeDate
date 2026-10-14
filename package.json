@@ -1,0 +1,20 @@
+{
+  "name": "wedate-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WeDate — AI-Powered Full-Stack Dating Web Application for Verified Student Communities",
+  "scripts": {
+    "install:all": "npm --prefix server install && npm --prefix client install",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "dev": "concurrently -n \"server,client\" -c \"magenta,cyan\" \"npm run dev:server\" \"npm run dev:client\"",
+    "build:client": "npm --prefix client run build",
+    "test:server": "npm --prefix server test",
+    "test": "npm run test:server",
+    "seed": "npm --prefix server run seed",
+    "evaluate:ai": "npm --prefix server run evaluate:ai"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
