@@ -1,9 +1,19 @@
 export const errorHandler = (err, req, res, next) => {
   console.error('[Error Caught]', err.name, err.message);
 
-  let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  let statusCode = err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
   let message = err.message || 'Internal Server Error';
   let errors = null;
+
+  // Domain restriction or age restriction or client validation
+  if (
+    message.includes('restricted to verified student') ||
+    message.includes('at least 18 years') ||
+    message.includes('already exists') ||
+    message.includes('Invalid')
+  ) {
+    if (statusCode === 500) statusCode = 400;
+  }
 
   // Mongoose duplicate key error
   if (err.code === 11000) {
