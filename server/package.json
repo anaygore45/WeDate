@@ -12,6 +12,7 @@
     "evaluate:ai": "node scripts/evaluate-recommendations.js"
   },
   "dependencies": {
+    "@google/genai": "^2.30.0",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.5.1",
     "cookie-parser": "^1.4.7",

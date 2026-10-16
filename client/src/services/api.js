@@ -119,4 +119,14 @@ export const settingsApi = {
     api.delete('/settings/account', { data: { confirmationText } })
 };
 
+// AI Smart Connection Assistant
+export const aiApi = {
+  getStatus: () => api.get('/ai/status'),
+  explainMatch: (candidateUserId) => api.post('/ai/explain', { candidateUserId }),
+  getIcebreakers: (matchId) => api.post('/ai/icebreakers', { matchId }),
+  enhanceBio: (currentBio, tone) => api.post('/ai/enhance-bio', { currentBio, tone }),
+  evaluateSynergy: (candidateUserIds) => api.post('/ai/synergy', { candidateUserIds })
+};
+
 export default api;
+

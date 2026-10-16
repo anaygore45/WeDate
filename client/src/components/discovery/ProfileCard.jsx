@@ -451,6 +451,8 @@ export const ProfileCard = ({
           score={candidate.recommendationScore}
           reasons={candidate.reasons}
           isPersonalized={isPersonalized}
+          candidateUserId={candidate.user || candidate._id}
+          candidateName={candidate.name}
         />
       </div>
 

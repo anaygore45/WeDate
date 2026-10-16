@@ -7,10 +7,11 @@ import {
   Eye,
   EyeOff,
   Sparkles,
-  Save
+  Save,
+  Loader2
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.jsx';
-import { profileApi } from '../services/api.js';
+import { profileApi, aiApi } from '../services/api.js';
 import { Button } from '../components/common/Button.jsx';
 import { ChipSelect } from '../components/common/ChipSelect.jsx';
 
@@ -67,6 +68,45 @@ export const ProfilePage = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
+
+  // Gemini AI Bio Assistant State
+  const [enhancingBio, setEnhancingBio] = useState(false);
+  const [bioSuggestions, setBioSuggestions] = useState([]);
+  const [showBioSuggestions, setShowBioSuggestions] = useState(false);
+  const [bioEnhanceError, setBioEnhanceError] = useState(null);
+
+  const handleAiBioEnhance = async () => {
+    if (showBioSuggestions && bioSuggestions.length > 0) {
+      setShowBioSuggestions(false);
+      return;
+    }
+
+    setEnhancingBio(true);
+    setBioEnhanceError(null);
+    setShowBioSuggestions(true);
+
+    try {
+      const res = await aiApi.enhanceBio(bio, 'authentic');
+      if (res.success && res.data?.suggestions) {
+        setBioSuggestions(res.data.suggestions);
+      } else {
+        setBioEnhanceError(res.message || 'Could not generate bio suggestions.');
+      }
+    } catch (err) {
+      if (err.response?.data?.code === 'AI_NOT_CONFIGURED') {
+        setBioEnhanceError('Configure GEMINI_API_KEY in server environment to enable AI bio polish.');
+      } else {
+        setBioEnhanceError(err.response?.data?.message || err.message || 'AI Assistant is currently unavailable.');
+      }
+    } finally {
+      setEnhancingBio(false);
+    }
+  };
+
+  const handleApplyBioSuggestion = (suggestedBio) => {
+    setBio(suggestedBio);
+    setShowBioSuggestions(false);
+  };
 
   useEffect(() => {
     if (profile) {
@@ -483,14 +523,39 @@ export const ProfilePage = () => {
           </div>
 
           <div>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
-              Biography
-            </label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                Biography
+              </label>
+              <button
+                type="button"
+                onClick={handleAiBioEnhance}
+                disabled={enhancingBio}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  backgroundColor: 'var(--color-primary-light)',
+                  color: 'var(--color-primary)',
+                  border: '1px solid var(--color-accent)',
+                  borderRadius: 'var(--radius-full)',
+                  padding: '3px 10px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  cursor: enhancingBio ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {enhancingBio ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                <span>{enhancingBio ? 'AI Coach thinking...' : '✨ Polish with AI Coach'}</span>
+              </button>
+            </div>
+
             <textarea
               rows={4}
               maxLength={600}
               value={bio}
               onChange={(e) => setBio(e.target.value)}
+              placeholder="Tell others about your studies, passions, favorite campus spots, or weekend hobbies..."
               style={{
                 width: '100%',
                 padding: '10px 14px',
@@ -501,6 +566,96 @@ export const ProfilePage = () => {
                 resize: 'vertical'
               }}
             />
+
+            {/* AI Bio Suggestions Panel */}
+            {showBioSuggestions && (
+              <div
+                style={{
+                  marginTop: '12px',
+                  padding: '14px',
+                  backgroundColor: 'var(--color-surface-subtle)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-md)',
+                  animation: 'slideUp 0.25s ease-out'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Sparkles size={15} color="var(--color-primary)" />
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                      Gemini Bio Coach Suggestions
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowBioSuggestions(false)}
+                    style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', cursor: 'pointer' }}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', margin: '0 0 10px 0' }}>
+                  Preserves your authentic voice and stated hobbies while making your profile more engaging.
+                </p>
+
+                {enhancingBio ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)', fontSize: '0.8rem', padding: '12px 0' }}>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Crafting authentic bio enhancements...</span>
+                  </div>
+                ) : bioEnhanceError ? (
+                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                    <strong style={{ color: 'var(--color-error)' }}>Notice: </strong>
+                    {bioEnhanceError}
+                  </div>
+                ) : bioSuggestions.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {bioSuggestions.map((item, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          padding: '12px',
+                          backgroundColor: 'var(--color-surface)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: 'var(--radius-sm)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                            {item.tone}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleApplyBioSuggestion(item.bio)}
+                            style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              color: '#FFFFFF',
+                              backgroundColor: 'var(--color-primary)',
+                              border: 'none',
+                              borderRadius: 'var(--radius-full)',
+                              padding: '3px 10px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Use This Bio
+                          </button>
+                        </div>
+                        <p style={{ margin: '0 0 6px 0', fontSize: '0.85rem', color: 'var(--color-text-main)', lineHeight: 1.5 }}>
+                          "{item.bio}"
+                        </p>
+                        {item.coachTip && (
+                          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>
+                            Coach Tip: {item.coachTip}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            )}
           </div>
 
           <div>

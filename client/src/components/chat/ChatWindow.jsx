@@ -7,11 +7,13 @@ import {
   Flag,
   UserX,
   ShieldCheck,
-  X
+  X,
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import { MessageBubble } from './MessageBubble.jsx';
 import { getSocket } from '../../services/socket.js';
-import { chatApi, matchApi } from '../../services/api.js';
+import { chatApi, matchApi, aiApi } from '../../services/api.js';
 
 const QUICK_EMOJIS = ['👋', '☕', '✨', '😊', '📚', '🎶', '🙌'];
 
@@ -34,9 +36,50 @@ export const ChatWindow = ({
   const [uploadingImage, setUploadingImage] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
+  // Gemini AI Icebreaker state
+  const [showIcebreakers, setShowIcebreakers] = useState(false);
+  const [icebreakersLoading, setIcebreakersLoading] = useState(false);
+  const [icebreakers, setIcebreakers] = useState([]);
+  const [icebreakerError, setIcebreakerError] = useState(null);
+
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
+
+  const handleFetchIcebreakers = async () => {
+    if (showIcebreakers) {
+      setShowIcebreakers(false);
+      return;
+    }
+
+    setShowIcebreakers(true);
+    if (icebreakers.length > 0) return;
+
+    setIcebreakersLoading(true);
+    setIcebreakerError(null);
+
+    try {
+      const res = await aiApi.getIcebreakers(matchId);
+      if (res.success && res.data?.starters) {
+        setIcebreakers(res.data.starters);
+      } else {
+        setIcebreakerError(res.message || 'Could not generate conversation starters.');
+      }
+    } catch (err) {
+      if (err.response?.data?.code === 'AI_NOT_CONFIGURED') {
+        setIcebreakerError('Set GEMINI_API_KEY in server environment to enable smart icebreakers.');
+      } else {
+        setIcebreakerError(err.response?.data?.message || err.message || 'Failed to load conversation starters.');
+      }
+    } finally {
+      setIcebreakersLoading(false);
+    }
+  };
+
+  const handleSelectIcebreaker = (starterText) => {
+    setInputText(starterText);
+    setShowIcebreakers(false);
+  };
 
   // Scroll to bottom helper
   const scrollToBottom = () => {
@@ -417,25 +460,128 @@ export const ChatWindow = ({
           padding: '12px 24px'
         }}
       >
-        {/* Quick Emoji Bar */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-          {QUICK_EMOJIS.map((emoji) => (
-            <button
-              key={emoji}
-              type="button"
-              onClick={() => setInputText((prev) => prev + emoji)}
-              style={{
-                fontSize: '1.1rem',
-                padding: '2px 6px',
-                borderRadius: '6px',
-                backgroundColor: 'transparent',
-                cursor: 'pointer'
-              }}
-            >
-              {emoji}
-            </button>
-          ))}
+        {/* Quick Emoji Bar & Smart Icebreakers Trigger */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {QUICK_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => setInputText((prev) => prev + emoji)}
+                style={{
+                  fontSize: '1.1rem',
+                  padding: '2px 6px',
+                  borderRadius: '6px',
+                  backgroundColor: 'transparent',
+                  cursor: 'pointer'
+                }}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleFetchIcebreakers}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '4px 12px',
+              borderRadius: 'var(--radius-full)',
+              backgroundColor: showIcebreakers ? 'var(--color-primary)' : 'var(--color-primary-light)',
+              color: showIcebreakers ? '#FFFFFF' : 'var(--color-primary)',
+              border: '1px solid var(--color-accent)',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'var(--transition-fast)'
+            }}
+          >
+            <Sparkles size={13} />
+            <span>{showIcebreakers ? 'Close Starters' : '✨ AI Icebreakers'}</span>
+          </button>
         </div>
+
+        {/* Smart Icebreakers Drawer */}
+        {showIcebreakers && (
+          <div
+            style={{
+              marginBottom: '12px',
+              padding: '12px 14px',
+              backgroundColor: 'var(--color-surface-subtle)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-md)',
+              animation: 'slideUp 0.25s ease-out'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Sparkles size={14} color="var(--color-primary)" />
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                  Personalized Conversation Starters
+                </span>
+              </div>
+              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>
+                Click to copy into input
+              </span>
+            </div>
+
+            {icebreakersLoading ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)', fontSize: '0.8rem', padding: '10px 0' }}>
+                <Loader2 size={16} className="animate-spin" />
+                <span>Generating grounded starters with Gemini...</span>
+              </div>
+            ) : icebreakerError ? (
+              <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', padding: '6px 0' }}>
+                <span style={{ fontWeight: 600, color: 'var(--color-error)' }}>Notice: </span>
+                {icebreakerError}
+              </div>
+            ) : icebreakers.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {icebreakers.map((starter, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => handleSelectIcebreaker(starter.starter)}
+                    style={{
+                      textAlign: 'left',
+                      padding: '8px 12px',
+                      backgroundColor: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-sm)',
+                      cursor: 'pointer',
+                      transition: 'var(--transition-fast)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--color-primary)';
+                      e.currentTarget.style.backgroundColor = 'var(--color-primary-light)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--color-border)';
+                      e.currentTarget.style.backgroundColor = 'var(--color-surface)';
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase' }}>
+                        {starter.category || 'Shared Passion'}
+                      </span>
+                      {starter.rationale && (
+                        <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
+                          {starter.rationale}
+                        </span>
+                      )}
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--color-text-main)', lineHeight: 1.4 }}>
+                      "{starter.starter}"
+                    </p>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        )}
 
         <form onSubmit={handleSend} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {/* Hidden File Input for images */}

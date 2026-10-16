@@ -26,12 +26,13 @@ The platform features a content-based AI recommendation engine that ranks discov
 - 🎓 **Student Verification** — Configurable email domain restriction for verified student communities
 - 👤 **Rich Profiles** — Photos, bio, interests, hobbies, relationship goals, languages, academic info
 - 💡 **AI Smart Discovery** — Content-based recommendation engine with explainable match reasons
+- ✨ **Gemini Connection Assistant** — Real generative AI (Google Gemini 2.5 Flash) for grounded connection insights, mutual-match conversation starters, and voice-preserving bio coaching
 - 💕 **Swipe & Match** — Like/Pass discovery with mutual matching and confetti celebrations
 - 💬 **Real-Time Chat** — Socket.IO powered messaging with typing indicators, read receipts, image sharing
 - 🔔 **Live Notifications** — Real-time notification delivery for matches, likes, and messages
 - 🛡️ **Safety Features** — Block users, report profiles, privacy controls, profile visibility toggle
 - 📱 **Responsive Design** — Desktop navigation + mobile bottom bar, editorial lifestyle aesthetic
-- 🧪 **Tested** — 26 automated tests covering AI algorithms and integration flows
+- 🧪 **Tested** — Automated unit and integration test suites covering algorithms, security, and AI privacy
 
 ---
 
@@ -41,8 +42,9 @@ The platform features a content-based AI recommendation engine that ranks discov
 |-------|-----------|
 | **Frontend** | React 18, Vite 6, React Router 6, Axios, Socket.IO Client, Lucide React |
 | **Backend** | Node.js, Express 4, Mongoose 8, JWT, bcryptjs, Socket.IO 4, Zod |
+| **Generative AI** | Google Gemini (`@google/genai` SDK, `gemini-2.5-flash`) |
+| **Classical AI** | Jaccard Similarity, TF-IDF + Cosine Similarity, Goal Compatibility Matrix |
 | **Database** | MongoDB (with mongodb-memory-server fallback for development) |
-| **AI Engine** | Jaccard Similarity, TF-IDF + Cosine Similarity, Goal Compatibility Matrix |
 | **Media** | Cloudinary SDK (with local filesystem fallback) |
 | **Email** | Nodemailer (with dev console transport fallback) |
 | **Security** | Helmet, CORS, Rate Limiting, Input Validation |
@@ -282,6 +284,7 @@ Configure a production SMTP provider (SendGrid, Mailgun, etc.) via the `SMTP_*` 
 | [API Reference](docs/api.md) | Complete REST API & Socket.IO event documentation |
 | [Database Schema](docs/database.md) | All Mongoose models with ER diagram |
 | [Security](docs/security.md) | Security practices and threat mitigations |
+| [Smart Connection Assistant](docs/smart-connection-assistant.md) | Gemini generative AI integration, icebreakers & privacy |
 | [AI Recommendation System](docs/ai-recommendation-system.md) | Algorithm details, equations, weights |
 | [AI Evaluation](docs/ai-evaluation.md) | Evaluation methodology and benchmark results |
 | [User Guide](docs/user-guide.md) | End-user guide for using WeDate |

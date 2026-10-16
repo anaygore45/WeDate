@@ -23,3 +23,17 @@ export const authLimiter = rateLimit({
     message: 'Too many authentication attempts. Please wait a few moments before trying again.'
   }
 });
+
+// Rate limiter for Generative AI endpoints: 35 requests per 15 minutes
+export const aiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 35,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    code: 'AI_RATE_LIMIT_EXCEEDED',
+    message: 'You have reached the AI Assistant request limit. Please wait a few minutes before trying again.'
+  }
+});
+
