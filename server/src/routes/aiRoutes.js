@@ -4,7 +4,8 @@ import {
   explainMatch,
   getIcebreakers,
   enhanceBioSuggestions,
-  evaluateSynergy
+  evaluateSynergy,
+  getReplySuggestions
 } from '../controllers/aiController.js';
 import { protect, requireVerified, requireCompletedProfile } from '../middleware/auth.js';
 import { aiLimiter } from '../middleware/rateLimiter.js';
@@ -31,5 +32,8 @@ router.post('/enhance-bio', enhanceBioSuggestions);
 
 // Multi-candidate discovery synergy evaluation
 router.post('/synergy', evaluateSynergy);
+
+// AI Chat Helper: Contextual "what to reply" suggestions
+router.post('/suggest-replies', getReplySuggestions);
 
 export default router;

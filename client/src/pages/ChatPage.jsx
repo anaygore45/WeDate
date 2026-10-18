@@ -29,6 +29,9 @@ export const ChatPage = () => {
       const res = await chatApi.getConversations();
       if (res.success && res.data) {
         setConversations(res.data);
+        if (!matchId && res.data.length > 0) {
+          navigate(`/chat/${res.data[0].matchId}`, { replace: true });
+        }
       }
     } catch (err) {
       console.warn('[Conversations Fetch Error]', err.message);
@@ -111,7 +114,7 @@ export const ChatPage = () => {
           matchId={activeConversation.matchId}
           otherProfile={activeConversation.otherProfile}
           otherUserId={activeConversation.otherUser}
-          currentUserId={user._id}
+          currentUserId={user?._id || user?.id}
           isOnline={Boolean(onlineStatusMap[activeConversation.otherUser])}
           onUnmatch={(mId) => setUnmatchingMatchId(mId)}
           onReport={(target) => setReportTarget(target)}

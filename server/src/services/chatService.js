@@ -154,27 +154,49 @@ export const createMessage = async ({ chatId, senderId, content, messageType = '
 };
 
 export const getUserConversations = async (userId) => {
-  const chats = await Chat.find({ participants: userId }).sort({ updatedAt: -1 });
+  // Query all active matches for this user
+  const matches = await Match.find({
+    users: userId,
+    isActive: true
+  }).sort({ lastActivityAt: -1, updatedAt: -1 });
 
   const populated = await Promise.all(
-    chats.map(async (c) => {
-      const match = await Match.findOne({ _id: c.match });
-      if (!match || !match.isActive) return null;
+    matches.map(async (m) => {
+      const otherUserId = m.users.find((u) => u.toString() !== userId.toString());
+      if (!otherUserId) return null;
 
-      const otherUserId = c.participants.find((p) => p.toString() !== userId.toString());
+      // Verify no active blocks
+      const isBlocked = await Block.findOne({
+        $or: [
+          { blocker: userId, blocked: otherUserId },
+          { blocker: otherUserId, blocked: userId }
+        ]
+      });
+      if (isBlocked) return null;
+
+      // Find or create associated Chat document
+      let chat = await Chat.findOne({ match: m._id });
+      if (!chat) {
+        chat = new Chat({
+          match: m._id,
+          participants: m.users
+        });
+        await chat.save();
+      }
+
       const otherProfile = await Profile.findOne({ user: otherUserId }).select(
-        'name age photos department'
+        'name age photos department academicYear interests'
       );
       if (!otherProfile) return null;
 
       return {
-        _id: c._id,
-        matchId: c.match,
+        _id: chat._id,
+        matchId: m._id,
         otherUser: otherUserId,
         profile: otherProfile,
-        lastMessage: c.lastMessage,
-        unreadCount: c.unreadCounts?.get(userId.toString()) || 0,
-        updatedAt: c.updatedAt
+        lastMessage: chat.lastMessage,
+        unreadCount: chat.unreadCounts?.get(userId.toString()) || 0,
+        updatedAt: chat.updatedAt || m.lastActivityAt || m.createdAt
       };
     })
   );

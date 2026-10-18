@@ -9,7 +9,9 @@ import {
   ShieldCheck,
   X,
   Sparkles,
-  Loader2
+  Loader2,
+  Wand2,
+  RefreshCw
 } from 'lucide-react';
 import { MessageBubble } from './MessageBubble.jsx';
 import { getSocket } from '../../services/socket.js';
@@ -41,6 +43,12 @@ export const ChatWindow = ({
   const [icebreakersLoading, setIcebreakersLoading] = useState(false);
   const [icebreakers, setIcebreakers] = useState([]);
   const [icebreakerError, setIcebreakerError] = useState(null);
+
+  // Gemini AI "What to Reply" state
+  const [showSmartReplies, setShowSmartReplies] = useState(false);
+  const [smartRepliesLoading, setSmartRepliesLoading] = useState(false);
+  const [smartReplies, setSmartReplies] = useState([]);
+  const [smartReplyError, setSmartReplyError] = useState(null);
 
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -79,6 +87,40 @@ export const ChatWindow = ({
   const handleSelectIcebreaker = (starterText) => {
     setInputText(starterText);
     setShowIcebreakers(false);
+  };
+
+  const handleFetchSmartReplies = async () => {
+    if (showSmartReplies) {
+      setShowSmartReplies(false);
+      return;
+    }
+
+    setShowSmartReplies(true);
+    setShowIcebreakers(false);
+    setSmartRepliesLoading(true);
+    setSmartReplyError(null);
+
+    try {
+      const res = await aiApi.suggestReplies(chatId, matchId);
+      if (res.success && res.data?.replies) {
+        setSmartReplies(res.data.replies);
+      } else {
+        setSmartReplyError(res.message || 'Could not generate reply suggestions.');
+      }
+    } catch (err) {
+      if (err.response?.data?.code === 'AI_NOT_CONFIGURED') {
+        setSmartReplyError('Set GEMINI_API_KEY in server environment to enable smart reply suggestions.');
+      } else {
+        setSmartReplyError(err.response?.data?.message || err.message || 'Failed to generate reply suggestions.');
+      }
+    } finally {
+      setSmartRepliesLoading(false);
+    }
+  };
+
+  const handleSelectReply = (replyText) => {
+    setInputText(replyText);
+    setShowSmartReplies(false);
   };
 
   // Scroll to bottom helper
@@ -402,13 +444,18 @@ export const ChatWindow = ({
           Mutual verified match. Keep conversation respectful and thoughtful.
         </div>
 
-        {messages.map((msg) => (
-          <MessageBubble
-            key={msg._id || msg.createdAt}
-            message={msg}
-            isMe={msg.sender?.toString() === currentUserId.toString()}
-          />
-        ))}
+        {messages.map((msg) => {
+          const myId = (currentUserId || '').toString();
+          const senderId = (msg.sender?._id || msg.sender?.id || msg.sender || '').toString();
+          const isMe = Boolean(myId && senderId && myId === senderId);
+          return (
+            <MessageBubble
+              key={msg._id || msg.createdAt || Math.random()}
+              message={msg}
+              isMe={isMe}
+            />
+          );
+        })}
 
         {/* Typing indicator */}
         {otherUserTyping && (
@@ -460,8 +507,8 @@ export const ChatWindow = ({
           padding: '12px 24px'
         }}
       >
-        {/* Quick Emoji Bar & Smart Icebreakers Trigger */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+        {/* Quick Emoji Bar & AI Tools Triggers */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ display: 'flex', gap: '8px' }}>
             {QUICK_EMOJIS.map((emoji) => (
               <button
@@ -481,28 +528,162 @@ export const ChatWindow = ({
             ))}
           </div>
 
-          <button
-            type="button"
-            onClick={handleFetchIcebreakers}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {/* AI Smart Reply Helper Trigger */}
+            <button
+              type="button"
+              onClick={handleFetchSmartReplies}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 12px',
+                borderRadius: 'var(--radius-full)',
+                backgroundColor: showSmartReplies ? 'var(--color-primary)' : 'var(--color-primary-light)',
+                color: showSmartReplies ? '#FFFFFF' : 'var(--color-primary)',
+                border: '1px solid var(--color-accent)',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'var(--transition-fast)'
+              }}
+            >
+              <Wand2 size={13} />
+              <span>{showSmartReplies ? 'Close Reply Helper' : '✨ What to Reply?'}</span>
+            </button>
+
+            {/* AI Icebreakers Trigger */}
+            <button
+              type="button"
+              onClick={handleFetchIcebreakers}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 12px',
+                borderRadius: 'var(--radius-full)',
+                backgroundColor: showIcebreakers ? 'var(--color-primary)' : 'var(--color-primary-light)',
+                color: showIcebreakers ? '#FFFFFF' : 'var(--color-primary)',
+                border: '1px solid var(--color-accent)',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'var(--transition-fast)'
+              }}
+            >
+              <Sparkles size={13} />
+              <span>{showIcebreakers ? 'Close Starters' : '✨ Icebreakers'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* AI "What to Reply" Smart Helper Drawer */}
+        {showSmartReplies && (
+          <div
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '4px 12px',
-              borderRadius: 'var(--radius-full)',
-              backgroundColor: showIcebreakers ? 'var(--color-primary)' : 'var(--color-primary-light)',
-              color: showIcebreakers ? '#FFFFFF' : 'var(--color-primary)',
-              border: '1px solid var(--color-accent)',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'var(--transition-fast)'
+              marginBottom: '12px',
+              padding: '12px 14px',
+              backgroundColor: 'var(--color-surface-subtle)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-md)',
+              animation: 'slideUp 0.25s ease-out'
             }}
           >
-            <Sparkles size={13} />
-            <span>{showIcebreakers ? 'Close Starters' : '✨ AI Icebreakers'}</span>
-          </button>
-        </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Wand2 size={14} color="var(--color-primary)" />
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                  AI Chat Helper — What to reply?
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleFetchSmartReplies}
+                disabled={smartRepliesLoading}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '0.7rem',
+                  color: 'var(--color-text-secondary)'
+                }}
+              >
+                <RefreshCw size={11} className={smartRepliesLoading ? 'animate-spin' : ''} />
+                <span>Reroll suggestions</span>
+              </button>
+            </div>
+
+            {smartRepliesLoading ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)', fontSize: '0.8rem', padding: '10px 0' }}>
+                <Loader2 size={16} className="animate-spin" />
+                <span>Reading conversation vibe & drafting replies with Gemini...</span>
+              </div>
+            ) : smartReplyError ? (
+              <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', padding: '6px 0' }}>
+                <span style={{ fontWeight: 600, color: 'var(--color-error)' }}>Notice: </span>
+                {smartReplyError}
+              </div>
+            ) : smartReplies.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {smartReplies.map((item, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => handleSelectReply(item.reply)}
+                    style={{
+                      textAlign: 'left',
+                      padding: '10px 14px',
+                      backgroundColor: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-sm)',
+                      cursor: 'pointer',
+                      transition: 'var(--transition-fast)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--color-primary)';
+                      e.currentTarget.style.backgroundColor = 'var(--color-primary-light)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--color-border)';
+                      e.currentTarget.style.backgroundColor = 'var(--color-surface)';
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', alignItems: 'center' }}>
+                      <span
+                        style={{
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          color: 'var(--color-primary)',
+                          textTransform: 'uppercase',
+                          backgroundColor: 'var(--color-primary-light)',
+                          padding: '2px 8px',
+                          borderRadius: '10px'
+                        }}
+                      >
+                        {item.tone || 'Suggested Reply'}
+                      </span>
+                      {item.contextReason && (
+                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                          {item.contextReason}
+                        </span>
+                      )}
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-main)', lineHeight: 1.45 }}>
+                      "{item.reply}"
+                    </p>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                Click below to get tailored reply suggestions based on the last messages.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Smart Icebreakers Drawer */}
         {showIcebreakers && (

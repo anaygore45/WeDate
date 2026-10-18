@@ -1,12 +1,15 @@
 import Profile from '../models/Profile.js';
 import Match from '../models/Match.js';
 import Block from '../models/Block.js';
+import Chat from '../models/Chat.js';
+import Message from '../models/Message.js';
 import {
   isAiConfigured,
   generatePersonalizedExplanation,
   generateConversationStarters,
   enhanceBio,
-  analyzeDiscoverySynergy
+  analyzeDiscoverySynergy,
+  generateReplySuggestions
 } from '../services/aiAssistantService.js';
 
 /**
@@ -249,6 +252,105 @@ export const evaluateSynergy = async (req, res, next) => {
       success: true,
       data: {
         synergies: synergyResults
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Generate 3 contextual "what to reply" suggestions for active conversation
+ * POST /api/ai/suggest-replies
+ */
+export const getReplySuggestions = async (req, res, next) => {
+  try {
+    const { chatId, matchId } = req.body;
+    if (!chatId && !matchId) {
+      return res.status(400).json({
+        success: false,
+        message: 'chatId or matchId is required.'
+      });
+    }
+
+    let chat;
+    if (chatId) {
+      chat = await Chat.findOne({ _id: chatId, participants: req.user._id });
+    } else {
+      chat = await Chat.findOne({ match: matchId, participants: req.user._id });
+    }
+
+    if (!chat) {
+      const match = await Match.findOne({
+        _id: matchId,
+        users: req.user._id,
+        isActive: true
+      });
+      if (!match) {
+        return res.status(403).json({
+          success: false,
+          message: 'Active conversation or match not found.'
+        });
+      }
+      chat = new Chat({ match: match._id, participants: match.users });
+      await chat.save();
+    }
+
+    // Verify active match
+    const match = await Match.findOne({ _id: chat.match, isActive: true });
+    if (!match) {
+      return res.status(403).json({
+        success: false,
+        message: 'This match is inactive or has been removed.'
+      });
+    }
+
+    const partnerUserId = chat.participants.find(
+      (p) => p.toString() !== req.user._id.toString()
+    );
+
+    // Verify no blocks
+    const isBlocked = await Block.findOne({
+      $or: [
+        { blocker: req.user._id, blocked: partnerUserId },
+        { blocker: partnerUserId, blocked: req.user._id }
+      ]
+    });
+    if (isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: 'AI helper is unavailable due to safety block.'
+      });
+    }
+
+    // Fetch user and partner profiles
+    const [userProfile, partnerProfile] = await Promise.all([
+      Profile.findOne({ user: req.user._id }),
+      Profile.findOne({ user: partnerUserId })
+    ]);
+
+    if (!userProfile || !partnerProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Profile information not found.'
+      });
+    }
+
+    // Fetch last 8 messages from chat
+    const messages = await Message.find({ chat: chat._id })
+      .sort({ createdAt: -1 })
+      .limit(8);
+
+    const replies = await generateReplySuggestions(
+      userProfile,
+      partnerProfile,
+      messages.reverse()
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        replies
       }
     });
   } catch (error) {

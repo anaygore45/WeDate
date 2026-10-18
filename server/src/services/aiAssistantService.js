@@ -341,3 +341,84 @@ JSON Schema:
     handleAiError(err, 'AI Discovery analysis unavailable.');
   }
 };
+
+/**
+ * Generates 3 contextual, natural "what to reply" suggestions based on recent chat history and profiles
+ */
+export const generateReplySuggestions = async (userProfile, partnerProfile, recentMessages = []) => {
+  const ai = getAiClient();
+  const studentA = sanitizeForAi(userProfile);
+  const studentB = sanitizeForAi(partnerProfile);
+
+  const formattedMessages = recentMessages.slice(-8).map((m) => {
+    const isFromA = m.sender.toString() === (userProfile.user?._id || userProfile.user).toString();
+    const senderName = isFromA ? studentA.name : studentB.name;
+    const content = m.messageType === 'image' ? '[Sent an image]' : m.content;
+    return `${senderName}: "${content}"`;
+  });
+
+  const prompt = `You are the WeDate Smart Chat Assistant for university students.
+Student A (${studentA.name}) is chatting with their mutual match Student B (${studentB.name}) on WeDate.
+Student A wants suggestions for "What to reply" next.
+
+Student A:
+- Department: ${studentA.department}
+- Interests: ${studentA.interests.join(', ') || 'Not specified'}
+- Hobbies: ${studentA.hobbies.join(', ') || 'Not specified'}
+
+Student B (Match):
+- Name: ${studentB.name}
+- Department: ${studentB.department} (${studentB.academicYear})
+- Interests: ${studentB.interests.join(', ') || 'Not specified'}
+- Hobbies: ${studentB.hobbies.join(', ') || 'Not specified'}
+- Bio: "${studentB.bio}"
+
+Recent Conversation:
+${formattedMessages.length > 0 ? formattedMessages.join('\n') : '(No messages yet; conversation just started)'}
+
+RULES:
+1. Provide exactly 3 distinct, natural, conversational reply options:
+   - "Flirty & Playful": witty, charming banter, light teasing or compliment.
+   - "Thoughtful & Curious": insightful question or continuation showing genuine interest in what they said or shared.
+   - "Casual & Chill": easygoing, relaxed, low-pressure campus chat.
+2. Directly answer or react to Student B's last statement or topic. If Student B hasn't spoken yet, suggest natural starters.
+3. Keep the messages sound like a real, authentic 18-24 college student (no corporate or robotic speak).
+4. Return ONLY a valid JSON object matching the schema below.
+
+JSON Schema:
+{
+  "replies": [
+    {
+      "tone": "Flirty & Playful",
+      "reply": "The exact message Student A can send",
+      "contextReason": "Brief note on why this reply works"
+    },
+    {
+      "tone": "Thoughtful & Curious",
+      "reply": "The exact message Student A can send",
+      "contextReason": "Brief note on why this reply works"
+    },
+    {
+      "tone": "Casual & Chill",
+      "reply": "The exact message Student A can send",
+      "contextReason": "Brief note on why this reply works"
+    }
+  ]
+}`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: DEFAULT_MODEL,
+      contents: prompt,
+      config: {
+        temperature: 0.6,
+        responseMimeType: 'application/json'
+      }
+    });
+
+    const parsed = JSON.parse(cleanJsonOutput(response.text));
+    return Array.isArray(parsed.replies) ? parsed.replies : [];
+  } catch (err) {
+    handleAiError(err, 'Could not generate reply suggestions at this moment.');
+  }
+};

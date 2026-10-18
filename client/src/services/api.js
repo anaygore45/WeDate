@@ -125,7 +125,8 @@ export const aiApi = {
   explainMatch: (candidateUserId) => api.post('/ai/explain', { candidateUserId }),
   getIcebreakers: (matchId) => api.post('/ai/icebreakers', { matchId }),
   enhanceBio: (currentBio, tone) => api.post('/ai/enhance-bio', { currentBio, tone }),
-  evaluateSynergy: (candidateUserIds) => api.post('/ai/synergy', { candidateUserIds })
+  evaluateSynergy: (candidateUserIds) => api.post('/ai/synergy', { candidateUserIds }),
+  suggestReplies: (chatId, matchId) => api.post('/ai/suggest-replies', { chatId, matchId })
 };
 
 export default api;

@@ -4,6 +4,9 @@ import { initSocket, disconnectSocket } from '../services/socket.js';
 
 const AuthContext = createContext(null);
 
+const normalizeUser = (u) =>
+  u ? { ...u, id: u.id || u._id, _id: u._id || u.id } : null;
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -14,7 +17,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await authApi.getMe();
       if (res.success && res.data) {
-        setUser(res.data.user);
+        setUser(normalizeUser(res.data.user));
         setProfile(res.data.profile);
         const storedToken = localStorage.getItem('wedate_token');
         if (storedToken) {
@@ -41,7 +44,7 @@ export const AuthProvider = ({ children }) => {
     const res = await authApi.login({ email, password });
     if (res.success && res.data) {
       const { user: loggedInUser, profile: loggedInProfile, token: jwtToken } = res.data;
-      setUser(loggedInUser);
+      setUser(normalizeUser(loggedInUser));
       setProfile(loggedInProfile);
       setToken(jwtToken);
       if (jwtToken) {
@@ -57,7 +60,7 @@ export const AuthProvider = ({ children }) => {
     const res = await authApi.register(userData);
     if (res.success && res.data) {
       const { user: newUser, profile: newProfile, token: jwtToken } = res.data;
-      setUser(newUser);
+      setUser(normalizeUser(newUser));
       setProfile(newProfile);
       setToken(jwtToken);
       if (jwtToken) {
