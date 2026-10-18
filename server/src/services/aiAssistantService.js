@@ -34,6 +34,29 @@ const getAiClient = () => {
   return new GoogleGenAI({ apiKey: apiKey.trim() });
 };
 
+const handleAiError = (err, fallbackMessage) => {
+  console.error('[Gemini API Error]', err.message);
+  if (err.code === 'AI_NOT_CONFIGURED') throw err;
+
+  const isAuthError =
+    err.message?.includes('API key not valid') ||
+    err.message?.includes('ACCESS_TOKEN_TYPE_UNSUPPORTED') ||
+    err.message?.includes('UNAUTHENTICATED') ||
+    err.status === 401;
+
+  if (isAuthError) {
+    const error = new Error('Invalid Gemini API key. Please check that GEMINI_API_KEY in .env starts with AIzaSy... from Google AI Studio (https://aistudio.google.com/app/apikey).');
+    error.code = 'AI_INVALID_KEY';
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const error = new Error(fallbackMessage || 'AI Connection Assistant is temporarily unavailable. Please try again.');
+  error.code = 'AI_SERVICE_ERROR';
+  error.statusCode = 502;
+  throw error;
+};
+
 /**
  * Sanitizes a profile object, extracting ONLY voluntary and publicly visible attributes.
  * Strips emails, user IDs, auth tokens, passwords, timestamps, and private data.
@@ -128,12 +151,7 @@ JSON Schema:
       conversationSpark: parsed.conversationSpark || ''
     };
   } catch (err) {
-    console.error('[Gemini Explanation Error]', err.message);
-    if (err.code === 'AI_NOT_CONFIGURED') throw err;
-    const error = new Error('AI Connection Assistant is temporarily unavailable. Please try again.');
-    error.code = 'AI_SERVICE_ERROR';
-    error.statusCode = 502;
-    throw error;
+    handleAiError(err, 'AI Connection Assistant is temporarily unavailable. Please try again.');
   }
 };
 
@@ -195,12 +213,7 @@ JSON Schema:
     }
     throw new Error('Unexpected model response format');
   } catch (err) {
-    console.error('[Gemini Starters Error]', err.message);
-    if (err.code === 'AI_NOT_CONFIGURED') throw err;
-    const error = new Error('Could not generate conversation starters at this moment.');
-    error.code = 'AI_SERVICE_ERROR';
-    error.statusCode = 502;
-    throw error;
+    handleAiError(err, 'Could not generate conversation starters at this moment.');
   }
 };
 
@@ -265,12 +278,7 @@ JSON Schema:
     const parsed = JSON.parse(cleanJsonOutput(response.text));
     return parsed.suggestions || [];
   } catch (err) {
-    console.error('[Gemini Bio Enhancement Error]', err.message);
-    if (err.code === 'AI_NOT_CONFIGURED') throw err;
-    const error = new Error('Could not generate bio suggestions at this moment.');
-    error.code = 'AI_SERVICE_ERROR';
-    error.statusCode = 502;
-    throw error;
+    handleAiError(err, 'Could not generate bio suggestions at this moment.');
   }
 };
 
@@ -330,11 +338,6 @@ JSON Schema:
     const parsed = JSON.parse(cleanJsonOutput(response.text));
     return Array.isArray(parsed) ? parsed : [];
   } catch (err) {
-    console.error('[Gemini Discovery Synergy Error]', err.message);
-    if (err.code === 'AI_NOT_CONFIGURED') throw err;
-    const error = new Error('AI Discovery analysis unavailable.');
-    error.code = 'AI_SERVICE_ERROR';
-    error.statusCode = 502;
-    throw error;
+    handleAiError(err, 'AI Discovery analysis unavailable.');
   }
 };
