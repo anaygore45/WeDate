@@ -56,11 +56,6 @@ const ProtectedRoute = ({ children, requireComplete = true }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // If email is not verified, redirect to verify-email
-  if (!user.isVerified && location.pathname !== '/verify-email') {
-    return <Navigate to="/verify-email" replace />;
-  }
-
   // If profile is incomplete, send to onboarding
   if (
     requireComplete &&
@@ -79,7 +74,7 @@ const PublicRoute = ({ children }) => {
 
   if (loading) return null;
 
-  if (user && user.isVerified && profile?.isCompleted) {
+  if (user && profile?.isCompleted) {
     return <Navigate to="/discover" replace />;
   }
 

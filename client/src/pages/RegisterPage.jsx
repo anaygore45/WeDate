@@ -77,7 +77,7 @@ export const RegisterPage = () => {
         department,
         academicYear
       });
-      navigate('/verify-email');
+      navigate('/onboarding');
     } catch (err) {
       setError(err.message || 'Registration failed. Please check your details.');
     } finally {

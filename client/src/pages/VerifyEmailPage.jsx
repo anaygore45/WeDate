@@ -40,10 +40,14 @@ export const VerifyEmailPage = () => {
   };
 
   useEffect(() => {
+    if (user) {
+      navigate('/onboarding', { replace: true });
+      return;
+    }
     if (tokenFromUrl) {
       handleVerify(tokenFromUrl);
     }
-  }, [tokenFromUrl]);
+  }, [user, tokenFromUrl, navigate]);
 
   const handleResend = async () => {
     setResending(true);

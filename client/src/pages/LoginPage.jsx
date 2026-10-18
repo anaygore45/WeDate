@@ -25,9 +25,7 @@ export const LoginPage = () => {
 
     try {
       const data = await login(email, password);
-      if (!data.user.isVerified) {
-        navigate('/verify-email');
-      } else if (!data.profile || !data.profile.isCompleted) {
+      if (!data.profile || !data.profile.isCompleted) {
         navigate('/onboarding');
       } else {
         navigate('/discover');

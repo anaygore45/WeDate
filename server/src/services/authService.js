@@ -48,13 +48,12 @@ export const registerUser = async ({ email, password, name, dateOfBirth, gender,
     throw new Error('You must be at least 18 years of age to register for WeDate.');
   }
 
-  // Create User
+  // Create User (immediately verified)
   const user = new User({
     email: normalizedEmail,
-    password
+    password,
+    isVerified: true
   });
-
-  const rawVerificationToken = user.createEmailVerificationToken();
   await user.save();
 
   // Create initial Profile
@@ -68,20 +67,13 @@ export const registerUser = async ({ email, password, name, dateOfBirth, gender,
   });
   await profile.save();
 
-  // Send verification email
-  try {
-    await sendVerificationEmail(normalizedEmail, rawVerificationToken, name);
-  } catch (err) {
-    console.warn('[Email] Warning: could not send verification email:', err.message);
-  }
-
   const token = signToken({ userId: user._id, email: user.email });
 
   return {
     user: {
       id: user._id,
       email: user.email,
-      isVerified: user.isVerified,
+      isVerified: true,
       status: user.status
     },
     profile,

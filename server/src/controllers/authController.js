@@ -40,7 +40,7 @@ export const register = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: 'Account created successfully. Please verify your campus email address.',
+      message: 'Account created successfully! Welcome to WeDate.',
       data: result
     });
   } catch (error) {
