@@ -19,7 +19,7 @@ export const getAiStatus = async (req, res) => {
     data: {
       isConfigured: isAiConfigured(),
       provider: 'Google Gemini',
-      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+      model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
       features: [
         'smart_discovery',
         'personalized_explanations',
